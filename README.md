@@ -8,21 +8,27 @@ number=1;
 <br>
 查看数据库结果：
 <br>
+
+
 use seckill1;
 
 select * from item where id=6;
 
-select count(id) from orders where item_id=6;
+select min(orders_create_time), max(orders_create_time),count(id) from orders where item_id=6;
 
-update item set item_stock=10000;
+update item set item_stock=50 where id=6;
 
-update item set item_sale=0;
+update item set item_sale=0 where id=6;
+
+update item set version=0 where id=6;
 
 delete from orders where item_id=6;
 
 select * from item where id=6;
 
-select count(id) from orders where item_id=6;
+select min(orders_create_time), max(orders_create_time),count(id) from orders where item_id=6;
+
+
 <br>
 <br>
 备注：
@@ -41,5 +47,12 @@ select count(id) from orders where item_id=6;
  http://39.103.166.28:8088/profiler.html
  <br>
  http://121.89.206.190:8088/profiler.html
+ 8. 访问接口：
+ <br>
+ 无锁：/createWrongOrder
+ <br>
+ 悲观： /createPessimisticOrder
+ <br>
+  乐观：/createOptimisticOrder
 
 

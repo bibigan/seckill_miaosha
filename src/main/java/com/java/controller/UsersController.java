@@ -26,8 +26,8 @@ import org.springframework.web.util.HtmlUtils;
 import org.apache.commons.lang.math.RandomUtils;
 import javax.servlet.http.HttpSession;
 
-@RestController
 @Profiler
+@RestController
 public class UsersController {
     @Autowired
     UsersService usersService;
