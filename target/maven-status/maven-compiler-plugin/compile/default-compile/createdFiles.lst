@@ -10,6 +10,7 @@ com\java\service\Impl\ItemServiceImpl.class
 com\java\mapper\ItemMapper.class
 com\java\service\OrdersService.class
 com\java\mapper\Item_killMapper.class
+com\java\config\RedisConfig.class
 com\java\pojo\Orders.class
 com\java\pojo\OrdersInVuex.class
 com\java\mapper\OrdersMapper.class

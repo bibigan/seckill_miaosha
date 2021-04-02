@@ -190,4 +190,35 @@ public class UsersController {
     }
 
 
+    @GetMapping("/getStockByCache")
+    public String getStockByCache() {
+        Integer count;
+        int sid =6;
+        try {
+            count = itemService.getStockCountByCache(sid);//从缓存获得剩余库存
+            if (count == null) {//缓存不命中
+                count = itemService.getStockCountByDB(sid);//从数据库获得剩余库存
+                LOGGER.info("Redis缓存未命中，查询数据库，并写入缓存");
+                itemService.setStockCountCache(sid, count);//保存到缓存
+            }
+        } catch (Exception e) {
+            LOGGER.error("Redis查询库存失败：[{}]", e.getMessage());
+            return "Cache查询库存失败";
+        }
+//        LOGGER.info("商品Id: [{}] 剩余库存为: [{}]", sid, count);
+        return "Cache查询库存成功,剩余库存为:"+count;
+    }
+    @GetMapping("/getStockByDB")
+    public String getStockByDB() {
+        int count;
+        int sid =6;
+        try {
+            count = itemService.getStockCountByDB(sid);//从数据库获得剩余库存
+        } catch (Exception e) {
+            LOGGER.error("DB查询库存失败：[{}]", e.getMessage());
+            return "DB查询库存失败";
+        }
+//        LOGGER.info("商品Id: [{}] 剩余库存为: [{}]", sid, count);
+        return "DB查询库存成功,剩余库存为:"+count;
+    }
 }
