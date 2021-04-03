@@ -10,7 +10,7 @@ public interface ItemService {
     void update(Item c);
     Item get(int id);
     List<Item> list();
-
+    void delItemCache(int id);
     /**
      * 查询库存：通过缓存查询库存
      * 缓存命中：返回库存

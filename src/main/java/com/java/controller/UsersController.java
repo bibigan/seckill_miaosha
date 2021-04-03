@@ -221,4 +221,21 @@ public class UsersController {
 //        LOGGER.info("商品Id: [{}] 剩余库存为: [{}]", sid, count);
         return "DB查询库存成功,剩余库存为:"+count;
     }
+
+    @GetMapping(value = "/createUserOrderWithRedis")
+    public String createUserOrderWithRedis(@RequestParam(value = "user_id") Integer user_id,
+                                           @RequestParam(value = "orders_number") Integer orders_number,
+                                           @RequestParam(value = "item_kill_id") Integer item_kill_id){
+//        int item_id =item_killService.get(item_kill_id).getItem_id();
+        int item_id = item_kill_id;
+        int id;
+        try {
+            id = ordersService.createOrderWithRedis(item_id,orders_number,user_id);
+            LOGGER.info("购买成功，剩余库存为: [{}]", id);
+        } catch (Exception e) {
+            LOGGER.error("购买失败：[{}]", e.getMessage());
+            return "购买失败，库存不足";
+        }
+        return String.format("购买成功，剩余库存为：%d", id);
+    }
 }

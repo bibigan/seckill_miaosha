@@ -7,6 +7,9 @@ import com.java.service.ItemService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheConfig;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
@@ -14,6 +17,7 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 @Service
+@CacheConfig(cacheNames="items")
 public class ItemServiceImpl implements ItemService {
     @Autowired
     private ItemMapper itemMapper;
@@ -28,6 +32,7 @@ public class ItemServiceImpl implements ItemService {
     }
 
     @Override
+    @CacheEvict(key="'items-one-'+ #p0")
     public void delete(int id) {
         itemMapper.delete(id);
     }
@@ -38,15 +43,23 @@ public class ItemServiceImpl implements ItemService {
     }
 
     @Override
+    @Cacheable(key="'items-one-'+ #p0")
     public Item get(int id) {
         return itemMapper.get(id);
     }
 
     @Override
+//    @Cacheable(key="'items-all'")
     public List<Item> list() {
         return itemMapper.findAll();
     }
 
+    @Override
+    @CacheEvict(key="'items-one-'+ #p0")
+    public void delItemCache(int id)   {
+        String hashKey= "items-one-"+id;
+        LOGGER.info("删除商品缓存:[{}]",hashKey);
+    }
 
     @Override
     public Integer getStockCount(int item_id) {
@@ -87,7 +100,9 @@ public class ItemServiceImpl implements ItemService {
 
     @Override
     public void delStockCountCache(int id) {
-
+        String hashKey = "items-one-" + id + "_stock";
+        LOGGER.info("删除商品库存缓存:[{}]",hashKey);
+        stringRedisTemplate.delete(hashKey);
     }
 
     @Override
