@@ -1,6 +1,7 @@
 C:\Users\Administrator\Downloads\miaosha\springboot\src\main\java\com\java\pojo\Item.java
 C:\Users\Administrator\Downloads\miaosha\springboot\src\main\java\com\java\service\UsersService.java
 C:\Users\Administrator\Downloads\miaosha\springboot\src\main\java\com\java\config\EzProfilerConfigure.java
+C:\Users\Administrator\Downloads\miaosha\springboot\src\main\java\com\java\config\RabbitMqConfig.java
 C:\Users\Administrator\Downloads\miaosha\springboot\src\main\java\com\java\pojo\Users.java
 C:\Users\Administrator\Downloads\miaosha\springboot\src\main\java\com\java\mapper\UsersMapper.java
 C:\Users\Administrator\Downloads\miaosha\springboot\src\main\java\com\java\pojo\Orders.java
@@ -16,6 +17,7 @@ C:\Users\Administrator\Downloads\miaosha\springboot\src\main\java\com\java\util\
 C:\Users\Administrator\Downloads\miaosha\springboot\src\main\java\com\java\util\TokenUtil.java
 C:\Users\Administrator\Downloads\miaosha\springboot\src\main\java\com\java\exception\GlobalExceptionHandler.java
 C:\Users\Administrator\Downloads\miaosha\springboot\src\main\java\com\java\Application.java
+C:\Users\Administrator\Downloads\miaosha\springboot\src\main\java\com\java\receiver\OrderMqReceiver.java
 C:\Users\Administrator\Downloads\miaosha\springboot\src\main\java\com\java\pojo\Item_kill.java
 C:\Users\Administrator\Downloads\miaosha\springboot\src\main\java\com\java\service\ItemService.java
 C:\Users\Administrator\Downloads\miaosha\springboot\src\main\java\com\java\mapper\Item_killMapper.java

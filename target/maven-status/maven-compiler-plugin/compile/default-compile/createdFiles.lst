@@ -15,6 +15,7 @@ com\java\pojo\Orders.class
 com\java\pojo\OrdersInVuex.class
 com\java\mapper\OrdersMapper.class
 com\java\controller\UsersController.class
+com\java\config\RabbitMqConfig.class
 com\java\service\Impl\Item_killServiceImpl.class
 com\java\config\EzProfilerConfigure.class
 com\java\service\Impl\OrdersServiceImpl.class
@@ -24,3 +25,4 @@ com\java\Application.class
 com\java\mapper\UsersMapper.class
 com\java\pojo\Users.class
 com\java\service\Item_killService.class
+com\java\receiver\OrderMqReceiver.class

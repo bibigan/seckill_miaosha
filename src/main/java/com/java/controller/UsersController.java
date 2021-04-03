@@ -94,7 +94,8 @@ public class UsersController {
         for (Item_kill item_kill:item_kills){
             int item_id=item_kill.getItem_id();
             Item item=itemService.get(item_id);
-            ItemInVuex itemInVuex=new ItemInVuex(item_kill.getId(),item.getItem_title(),item.getItem_img(),item.getItem_price(),item.getitem_stock(),item_kill.getItem_kill_seckillStartTime(),item_kill.getItem_kill_seckillEndTime());
+            int stock=item.getitem_stock()-item.getItem_sale();
+            ItemInVuex itemInVuex=new ItemInVuex(item_kill.getId(),item.getItem_title(),item.getItem_img(),item.getItem_price(),stock,item_kill.getItem_kill_seckillStartTime(),item_kill.getItem_kill_seckillEndTime());
             items.add(itemInVuex);
         }
         Collections.sort(items, new ComparatorItems());
@@ -121,17 +122,46 @@ public class UsersController {
         return orders;
     }
 
+    @PostMapping("buy")
+    public String createOrder0(@RequestBody Map<String,Object> para) throws JsonProcessingException {
+        LOGGER.info("访问/buy");
+        int user_id=getUserId();
+        Integer orders_number=(Integer)para.get("orders_number");
+        Integer item_kill_id=(Integer)para.get("item_kill_id");
+        int item_id =item_killService.get(item_kill_id).getItem_id();
+
+        try{
+            // 没有下单过，检查缓存中商品是否还有库存
+            // 注意这里的有库存和已经下单都是缓存中的结论，存在不可靠性，在消息队列中会查表再次验证
+            LOGGER.info("server：没有抢购过，检查缓存中商品是否还有库存");
+            Integer leftStock = ordersService.checkStockWithRedisNoThrow(item_id,orders_number);
+            if (leftStock<0) {
+                return "秒杀请求失败，库存不足.....";
+            }
+            LOGGER.info("server：库存足够，预计剩余[{}]",leftStock);
+            //初始化订单变量
+            Orders orders = ordersService.initOrder(item_id,orders_number,user_id);
+            //异步生成订单
+            JSONObject jsonObject = new JSONObject();
+            jsonObject.put("orders", orders);
+            jsonObject.put("item_id", item_id);
+            sendToordersQueue(jsonObject.toJSONString());
+            return "订单生成";
+        } catch (Exception e) {
+            LOGGER.error("server：下单接口：异步处理订单异常：", e);
+            return "秒杀请求失败，服务器正忙.....";
+        }
+    }
     public int getUserId(){
         String userName=TokenUtil.getUserName();
         return usersService.getByName(userName).getId();
     }
-
+//================压测代码============================================================================
     /**
      * 下单接口：导致超卖的错误示范
      * @return
      */
-    @RequestMapping("/createWrongOrder")
-    @ResponseBody
+    @GetMapping("/createWrongOrder")
     public String createWrongOrder() {
         int item_id=6;
         Integer number=1;
@@ -151,8 +181,7 @@ public class UsersController {
      * 下单接口：乐观锁更新库存 + 令牌桶限流
      * @return
      */
-    @RequestMapping("/createOptimisticOrder")
-    @ResponseBody
+    @GetMapping("/createOptimisticOrder")
     public String createOptimisticOrder() {
         int item_id=6;
         Integer number=1;
@@ -172,7 +201,7 @@ public class UsersController {
      * 下单接口：悲观锁更新库存 事务for update更新库存
      * @return
      */
-    @RequestMapping("/createPessimisticOrder")
+    @GetMapping("/createPessimisticOrder")
     public String createPessimisticOrder() {
         int item_id=6;
         Integer number=1;
@@ -258,7 +287,7 @@ public class UsersController {
             jsonObject.put("orders", orders);
             jsonObject.put("item_id", item_id);
             sendToordersQueue(jsonObject.toJSONString());
-            return "秒杀请求提交成功";
+            return "订单生成";
         } catch (Exception e) {
             LOGGER.error("server：下单接口：异步处理订单异常：", e);
             return "秒杀请求失败，服务器正忙.....";

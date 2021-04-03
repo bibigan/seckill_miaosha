@@ -2458,7 +2458,7 @@
           <boolProp name="LoopController.continue_forever">false</boolProp>
           <stringProp name="LoopController.loops">1</stringProp>
         </elementProp>
-        <stringProp name="ThreadGroup.num_threads">100</stringProp>
+        <stringProp name="ThreadGroup.num_threads">1</stringProp>
         <stringProp name="ThreadGroup.ramp_time">1</stringProp>
         <boolProp name="ThreadGroup.scheduler">false</boolProp>
         <stringProp name="ThreadGroup.duration"></stringProp>
@@ -2470,8 +2470,8 @@
           <elementProp name="HTTPsampler.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments" testname="User Defined Variables" enabled="true">
             <collectionProp name="Arguments.arguments"/>
           </elementProp>
-          <stringProp name="HTTPSampler.domain">127.0.0.1</stringProp>
-          <stringProp name="HTTPSampler.port">8086</stringProp>
+          <stringProp name="HTTPSampler.domain">121.89.206.152</stringProp>
+          <stringProp name="HTTPSampler.port">8088</stringProp>
           <stringProp name="HTTPSampler.protocol">http</stringProp>
           <stringProp name="HTTPSampler.contentEncoding"></stringProp>
           <stringProp name="HTTPSampler.path"></stringProp>
@@ -2480,7 +2480,7 @@
           <stringProp name="HTTPSampler.response_timeout"></stringProp>
         </ConfigTestElement>
         <hashTree/>
-        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="createWrongOrder" enabled="true">
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="createWrongOrder" enabled="false">
           <elementProp name="HTTPsampler.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments" testname="用户定义的变量" enabled="true">
             <collectionProp name="Arguments.arguments"/>
           </elementProp>
@@ -2708,7 +2708,7 @@
           </ResultCollector>
           <hashTree/>
         </hashTree>
-        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="createUserOrderWithMQ" enabled="false">
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="createUserOrderWithMQ" enabled="true">
           <elementProp name="HTTPsampler.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments" testname="用户定义的变量" enabled="true">
             <collectionProp name="Arguments.arguments"/>
           </elementProp>
@@ -2728,6 +2728,43 @@
         </HTTPSamplerProxy>
         <hashTree>
           <ResultCollector guiclass="StatVisualizer" testclass="ResultCollector" testname="聚合报告" enabled="true">
+            <boolProp name="ResultCollector.error_logging">false</boolProp>
+            <objProp>
+              <name>saveConfig</name>
+              <value class="SampleSaveConfiguration">
+                <time>true</time>
+                <latency>true</latency>
+                <timestamp>true</timestamp>
+                <success>true</success>
+                <label>true</label>
+                <code>true</code>
+                <message>true</message>
+                <threadName>true</threadName>
+                <dataType>true</dataType>
+                <encoding>false</encoding>
+                <assertions>true</assertions>
+                <subresults>true</subresults>
+                <responseData>false</responseData>
+                <samplerData>false</samplerData>
+                <xml>false</xml>
+                <fieldNames>true</fieldNames>
+                <responseHeaders>false</responseHeaders>
+                <requestHeaders>false</requestHeaders>
+                <responseDataOnError>false</responseDataOnError>
+                <saveAssertionResultsFailureMessage>true</saveAssertionResultsFailureMessage>
+                <assertionsResultsToSave>0</assertionsResultsToSave>
+                <bytes>true</bytes>
+                <sentBytes>true</sentBytes>
+                <url>true</url>
+                <threadCounts>true</threadCounts>
+                <idleTime>true</idleTime>
+                <connectTime>true</connectTime>
+              </value>
+            </objProp>
+            <stringProp name="filename"></stringProp>
+          </ResultCollector>
+          <hashTree/>
+          <ResultCollector guiclass="ViewResultsFullVisualizer" testclass="ResultCollector" testname="察看结果树" enabled="true">
             <boolProp name="ResultCollector.error_logging">false</boolProp>
             <objProp>
               <name>saveConfig</name>
