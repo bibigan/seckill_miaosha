@@ -1,5 +1,6 @@
 package com.java.service;
 
+import com.java.pojo.Item;
 import com.java.pojo.Orders;
 
 import java.util.List;
@@ -65,12 +66,11 @@ public interface OrdersService {
 
     /**
      * 创建正确订单：验证库存 + 下单乐观锁 + 更新订单信息到缓存
+     * @param orders
      * @param item_id
-     * @param number
-     * @param user_id
      * @throws Exception
      */
-    public void createOrderByMq(int item_id,Integer number,Integer user_id) throws Exception;
+    public void createOrderByMq(Orders orders, int item_id) throws Exception;
 
     /**
      * 检查缓存中用户是否已经有订单
@@ -81,4 +81,21 @@ public interface OrdersService {
      * @throws Exception
      */
     public Boolean checkUserOrderInfoInCache(int item_id,Integer number,Integer user_id) throws Exception;
+
+    /**
+     * 检查缓存库存,并获取缓存中的item(若缓存不命中则从mapper拿)，若库存不足抛异常
+     * @param item_id
+     * @param number
+     * @return
+     */
+    Integer checkStockWithRedisNoThrow(int item_id,int number);
+
+    /**
+     * 初始化订单
+     * @param item_id
+     * @param number
+     * @param user_id
+     * @return
+     */
+    Orders initOrder(int item_id, Integer number, Integer user_id);
 }

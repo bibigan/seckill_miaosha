@@ -74,5 +74,4 @@ public interface ItemService {
      * @return
      */
     int updateItemByOptimistic(Item item);
-
 }

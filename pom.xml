@@ -148,6 +148,17 @@
           <groupId>redis.clients</groupId>
           <artifactId>jedis</artifactId>
       </dependency>
+      <!--rabittmq-->
+      <dependency>
+          <groupId>org.springframework.boot</groupId>
+          <artifactId>spring-boot-starter-amqp</artifactId>
+      </dependency>
+<!--      canal-->
+      <dependency>
+          <groupId>top.javatool</groupId>
+          <artifactId>canal-spring-boot-starter</artifactId>
+          <version>1.2.1-RELEASE</version>
+      </dependency>
   </dependencies>
 <!--  插件  -->
     <build>

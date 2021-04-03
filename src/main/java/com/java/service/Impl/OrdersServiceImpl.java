@@ -82,7 +82,8 @@ public class OrdersServiceImpl implements OrdersService {
         //扣库存
         saleStock(item,number);
         //创建订单
-        int id = createOrder(item,number,user_id);
+        Orders orders=initOrder(item_id,number,user_id);
+        int id = createOrder(orders);
         return id;
     }
 
@@ -94,7 +95,8 @@ public class OrdersServiceImpl implements OrdersService {
         //更新库存
         saleStock(item,number);
         //创建订单
-        createOrder(item,number,user_id);
+        Orders orders=initOrder(item_id,number,user_id);
+        int id = createOrder(orders);
         return item.getitem_stock() - (item.getItem_sale());
     }
 
@@ -108,7 +110,8 @@ public class OrdersServiceImpl implements OrdersService {
             throw new RuntimeException("过期库存值，更新失败");
         }
         //创建订单
-        createOrder(item,number,user_id);
+        Orders orders=initOrder(item_id,number,user_id);
+        int id = createOrder(orders);
         return item.getitem_stock() - (item.getItem_sale());
     }
 
@@ -128,20 +131,45 @@ public class OrdersServiceImpl implements OrdersService {
         itemService.delStockCountCache(item_id);
         //创建订单到DB
         LOGGER.info("创建订单到DB");
-        createOrder(item,number,user_id);
+        Orders orders=initOrder(item_id,number,user_id);
+        createOrder(orders);
         //删除用户订单缓存
         delOrderCache(user_id);
         return leftStock;
     }
 
     @Override
-    public int createVerifiedOrder(int item_id, Integer number, Integer user_id, String verifyHash) throws Exception {
-        return 0;
+    public void createOrderByMq(Orders orders,int item_id) throws Exception {
+        int number=orders.getOrders_number();
+        int user_id=orders.getUser_id();
+        //校验数据库中库存
+        Item item = checkStockNoThrow(item_id,number);
+        if(item == null){
+            LOGGER.info("mq：库存不足！");
+            return;
+        }
+        int leftStock = item.getitem_stock() - (item.getItem_sale());
+        LOGGER.info("mq：库存足够，预计剩余[{}]",leftStock);
+        //乐观锁更新DB
+        boolean success = saleStockOptimistic(item,number);
+        if (!success){
+            LOGGER.info("mq：过期库存值，更新失败");
+            return;
+        }
+        //删除商品缓存
+        itemService.delItemCache(item_id);
+        //删除库存缓存
+        itemService.delStockCountCache(item_id);
+        //创建订单到DB
+        LOGGER.info("mq：创建订单到DB");
+        createOrder(orders);
+        //删除用户订单缓存
+        delOrderCache(user_id);
     }
 
     @Override
-    public void createOrderByMq(int item_id, Integer number, Integer user_id) throws Exception {
-
+    public int createVerifiedOrder(int item_id, Integer number, Integer user_id, String verifyHash) throws Exception {
+        return 0;
     }
 
     @Override
@@ -160,6 +188,21 @@ public class OrdersServiceImpl implements OrdersService {
         int leftStock = oldStock-number;
         if (leftStock<0) {
             throw new RuntimeException("库存不足");
+        }
+        item.setItem_sale(item.getItem_sale() + number);
+        return item;
+    }
+    /**
+     * 检查库存
+     * @param item_id
+     * @return
+     */
+    private Item checkStockNoThrow(int item_id,int number) {
+        Item item = itemService.getItemById(item_id);
+        int oldStock = item.getitem_stock()-item.getItem_sale();
+        int leftStock = oldStock-number;
+        if (leftStock<0) {
+            return null;
         }
         item.setItem_sale(item.getItem_sale() + number);
         return item;
@@ -197,6 +240,15 @@ public class OrdersServiceImpl implements OrdersService {
         LOGGER.info("库存足够，预计剩余：[{}]",leftStock);
         return item;
     }
+
+    @Override
+    public Integer checkStockWithRedisNoThrow(int item_id,int number) {
+        LOGGER.info("server：获取缓存中商品是否足够库存");
+        Item item = itemService.get(item_id);
+        int oldStock = item.getitem_stock()-item.getItem_sale();
+        int leftStock = oldStock-number;
+        return leftStock;
+    }
     /**
      * 更新库存
      * @param item
@@ -217,20 +269,22 @@ public class OrdersServiceImpl implements OrdersService {
     }
     /**
      * 创建订单
-     * @param item
-     * @param number
-     * @param user_id
+     * @param order
      * @return
      */
-    private int createOrder(Item item,Integer number,Integer user_id) {
+    private int createOrder(Orders order) {
+        //创建时间数据库自动生成
+        return ordersMapper.insertSelective(order);
+    }
+    @Override
+    public Orders initOrder(int item_id,Integer number,Integer user_id){
         Orders order = new Orders();
         String orderCode = new SimpleDateFormat("yyyyMMddHHmmssSSS").format(new Date()) + RandomUtils.nextInt(10000);
         order.setOrders_ocode(orderCode);
         order.setOrders_number(number);
-        order.setItem_id(item.getId());
-        order.setItem_kill_id(item.getId());//保持一致
+        order.setItem_id(item_id);
+        order.setItem_kill_id(item_id);//保持一致
         order.setUser_id(user_id);
-        //创建时间数据库自动生成
-        return ordersMapper.insertSelective(order);
+        return order;
     }
 }

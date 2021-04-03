@@ -2,6 +2,7 @@ package com.java.controller;
 import java.text.SimpleDateFormat;
 import java.util.*;
 
+import com.alibaba.fastjson.JSONObject;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.xjs.ezprofiler.annotation.Profiler;
@@ -16,15 +17,11 @@ import com.java.util.TokenUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.transaction.annotation.Propagation;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.servlet.ModelAndView;
 
 import com.alibaba.fastjson.JSON;
 import org.springframework.web.util.HtmlUtils;
-import org.apache.commons.lang.math.RandomUtils;
-import javax.servlet.http.HttpSession;
+import org.springframework.amqp.core.AmqpTemplate;
 
 @Profiler
 @RestController
@@ -37,6 +34,8 @@ public class UsersController {
     Item_killService item_killService;
     @Autowired
     OrdersService ordersService;
+    @Autowired
+    private AmqpTemplate rabbitTemplate;
 
     private static final Logger LOGGER = LoggerFactory.getLogger(UsersController.class);
 
@@ -237,5 +236,40 @@ public class UsersController {
             return "购买失败，库存不足";
         }
         return String.format("购买成功，剩余库存为：%d", id);
+    }
+    @GetMapping(value = "/createUserOrderWithMQ")
+    public String createUserOrderWithMQ(@RequestParam(value = "user_id") Integer user_id,
+                                      @RequestParam(value = "orders_number") Integer orders_number,
+                                      @RequestParam(value = "item_kill_id") Integer item_kill_id){
+        int item_id = item_kill_id;
+        try{
+            // 没有下单过，检查缓存中商品是否还有库存
+            // 注意这里的有库存和已经下单都是缓存中的结论，存在不可靠性，在消息队列中会查表再次验证
+            LOGGER.info("server：没有抢购过，检查缓存中商品是否还有库存");
+            Integer leftStock = ordersService.checkStockWithRedisNoThrow(item_id,orders_number);
+            if (leftStock<0) {
+                return "秒杀请求失败，库存不足.....";
+            }
+            LOGGER.info("server：库存足够，预计剩余[{}]",leftStock);
+            //初始化订单变量
+            Orders orders = ordersService.initOrder(item_id,orders_number,user_id);
+            //异步生成订单
+            JSONObject jsonObject = new JSONObject();
+            jsonObject.put("orders", orders);
+            jsonObject.put("item_id", item_id);
+            sendToordersQueue(jsonObject.toJSONString());
+            return "秒杀请求提交成功";
+        } catch (Exception e) {
+            LOGGER.error("server：下单接口：异步处理订单异常：", e);
+            return "秒杀请求失败，服务器正忙.....";
+        }
+    }
+    /**
+     * 向消息队列ordersQueue发送消息
+     * @param message
+     */
+    private void sendToordersQueue(String message) {
+        LOGGER.info("server：这就去通知消息队列开始下单：[{}]", message);
+        this.rabbitTemplate.convertAndSend("ordersQueue", message);
     }
 }
