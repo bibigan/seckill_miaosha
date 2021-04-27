@@ -43,7 +43,7 @@ public class ItemServiceImpl implements ItemService {
     }
 
     @Override
-    @Cacheable(key="'items-one-'+ #p0")
+    @Cacheable(key="'items-one-'+ #p0", unless="#result == null")
     public Item get(int id) {
         return itemMapper.get(id);
     }

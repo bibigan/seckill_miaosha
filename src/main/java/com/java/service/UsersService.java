@@ -11,5 +11,6 @@ public interface UsersService {
     Boolean isExist(String name);
     Users getByNameAndPassword(String name, String password);
     Users getByName(String name);
-
+    int addUserCount(Integer userId);
+    boolean getUserIsBanned(Integer userId);
 }

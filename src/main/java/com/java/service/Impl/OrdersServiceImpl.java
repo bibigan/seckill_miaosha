@@ -1,5 +1,6 @@
 package com.java.service.Impl;
 
+import com.google.common.util.concurrent.RateLimiter;
 import com.java.mapper.ItemMapper;
 import com.java.mapper.OrdersMapper;
 import com.java.mapper.UsersMapper;
@@ -7,6 +8,7 @@ import com.java.pojo.Item;
 import com.java.pojo.Orders;
 import com.java.service.ItemService;
 import com.java.service.OrdersService;
+import com.java.service.UsersService;
 import org.apache.commons.lang.math.RandomUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,6 +16,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheConfig;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 @Service
 @CacheConfig(cacheNames="orders")
@@ -31,6 +35,12 @@ public class OrdersServiceImpl implements OrdersService {
     ItemService itemService;
     @Autowired
     UsersMapper usersMapper;
+    @Autowired
+    UsersService usersService;
+    @Autowired
+    private StringRedisTemplate stringRedisTemplate;
+    //每秒放行10个请求 令牌
+    RateLimiter rateLimiter = RateLimiter.create(10);
 
     private static final Logger LOGGER = LoggerFactory.getLogger(OrdersServiceImpl.class);
 
@@ -51,7 +61,7 @@ public class OrdersServiceImpl implements OrdersService {
     }
 
     @Override
-    @Cacheable(key="'orders-one-'+ #p0")
+    @Cacheable(key="'orders-one-'+ #p0", unless="#result == null")
     public Orders get(int id) {
         return ordersMapper.get(id);
     }
@@ -63,18 +73,29 @@ public class OrdersServiceImpl implements OrdersService {
     }
 
     @Override
-    @Cacheable(key="'orders-uid-'+ #p0")
+    @Cacheable(key="'orders-uid-'+ #p0", unless="#result == null")
     public List<Orders> listByUid(int uid) {
         return ordersMapper.getByUid(uid);
     }
 
+//    @Override
+//    @CacheEvict(key="'orders-uid-'+ #p0")
+//    public void delOrderCache(int uid){
+//        String hashKey= "orders-uid-"+uid;
+//        LOGGER.info("删除用户订单缓存:[{}]",hashKey);
+//    }
     @Override
-    @CacheEvict(key="'orders-uid-'+ #p0")
-    public void delOrderCache(int uid){
-        String hashKey= "orders-uid-"+uid;
-        LOGGER.info("删除用户订单缓存:[{}]",hashKey);
+    public void delOrderCache(int uid) {
+        String hashKey= "orders::orders-uid-"+uid;
+        LOGGER.info("删除订单缓存！:[{}]",hashKey);
+        stringRedisTemplate.delete(hashKey);
     }
-
+    @Override
+    public void getCache(int uid) {
+        String hashKey= "orders::orders-uid-"+uid;
+        String countStr = stringRedisTemplate.opsForValue().get(hashKey);
+        LOGGER.info("[{}]的缓存:[{}]",hashKey,countStr);
+    }
     @Override
     public int createWrongOrder(int item_id,Integer number,Integer user_id) {
         //校验库存
@@ -135,6 +156,7 @@ public class OrdersServiceImpl implements OrdersService {
         createOrder(orders);
         //删除用户订单缓存
         delOrderCache(user_id);
+        getCache(user_id);
         return leftStock;
     }
 
@@ -165,16 +187,51 @@ public class OrdersServiceImpl implements OrdersService {
         createOrder(orders);
         //删除用户订单缓存
         delOrderCache(user_id);
+        getCache(user_id);
     }
 
     @Override
-    public int createVerifiedOrder(int item_id, Integer number, Integer user_id, String verifyHash) throws Exception {
-        return 0;
-    }
-
-    @Override
-    public Boolean checkUserOrderInfoInCache(int item_id, Integer number, Integer user_id) throws Exception {
-        return null;
+    public void createOderByLimit(Orders orders, int item_id) {
+        int number=orders.getOrders_number();
+        int user_id=orders.getUser_id();
+        // 非阻塞式获取令牌——初始化了令牌桶类，每秒放行10个请求
+        if (!rateLimiter.tryAcquire(1000, TimeUnit.MILLISECONDS)) {
+            LOGGER.warn("mq：你被限流了，真不幸，直接返回失败");
+            return ;
+        }
+        LOGGER.info("mq：未被限流");
+        // 单一用户访问控制
+        int count = usersService.addUserCount(user_id);
+        LOGGER.info("mq：用户截至该次的访问次数为: [{}]", count);
+        boolean isBanned = usersService.getUserIsBanned(user_id);
+        if (isBanned) {
+            LOGGER.warn("mq：购买失败，超过频率限制");
+            return;
+        }
+        //校验数据库中库存
+        Item item = checkStockNoThrow(item_id,number);
+        if(item == null){
+            LOGGER.info("mq：库存不足！");
+            return;
+        }
+        int leftStock = item.getitem_stock() - (item.getItem_sale());
+        LOGGER.info("mq：库存足够，预计剩余[{}]",leftStock);
+        //乐观锁更新DB
+        boolean success = saleStockOptimistic(item,number);
+        if (!success){
+            LOGGER.info("mq：过期库存值，更新失败");
+            return;
+        }
+        //删除商品缓存
+        itemService.delItemCache(item_id);
+        //删除库存缓存
+        itemService.delStockCountCache(item_id);
+        //创建订单到DB
+        LOGGER.info("mq：创建订单到DB");
+        createOrder(orders);
+        //删除用户订单缓存
+        delOrderCache(user_id);
+        getCache(user_id);
     }
 
     /**

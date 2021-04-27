@@ -35,13 +35,13 @@ public class Item_killServiceImpl implements Item_killService {
     }
 
     @Override
-    @Cacheable(key="'itemsKill-one-'+ #p0")
+    @Cacheable(key="'itemsKill-one-'+ #p0", unless="#result == null")
     public Item_kill get(int id) {
         return item_killMapper.get(id);
     }
 
     @Override
-    @Cacheable(key="'itemsKill-all'")
+    @Cacheable(key="'itemsKill-all'", unless="#result == null")
     public List<Item_kill> list() {
         return item_killMapper.findAll();
     }

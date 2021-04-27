@@ -1,11 +1,13 @@
 package com.java.controller;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 
 import com.alibaba.fastjson.JSONObject;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.xjs.ezprofiler.annotation.Profiler;
+import com.google.common.util.concurrent.RateLimiter;
 import com.java.pojo.*;
 import com.java.service.ItemService;
 import com.java.service.Item_killService;
@@ -38,6 +40,8 @@ public class UsersController {
     private AmqpTemplate rabbitTemplate;
 
     private static final Logger LOGGER = LoggerFactory.getLogger(UsersController.class);
+
+    RateLimiter rateLimiter = RateLimiter.create(10);
 
     @GetMapping("/users")
     public String listUsers() throws Exception {
@@ -130,6 +134,21 @@ public class UsersController {
         Integer item_kill_id=(Integer)para.get("item_kill_id");
         int item_id =item_killService.get(item_kill_id).getItem_id();
 
+        // 非阻塞式获取令牌——初始化了令牌桶类，每秒放行10个请求
+        if (!rateLimiter.tryAcquire(1000, TimeUnit.MILLISECONDS)) {
+            LOGGER.warn("mq：你被限流了，真不幸，直接返回失败");
+            return "你被限流了，请稍后再试";
+        }
+        LOGGER.info("mq：未被限流");
+        // 单一用户访问控制
+        int count = usersService.addUserCount(user_id);
+        LOGGER.info("mq：用户截至该次的访问次数为: [{}]", count);
+        boolean isBanned = usersService.getUserIsBanned(user_id);
+        if (isBanned) {
+            LOGGER.warn("mq：购买失败，超过频率限制");
+            return "操作过于频繁，请稍后再试";
+        }
+
         try{
             // 没有下单过，检查缓存中商品是否还有库存
             // 注意这里的有库存和已经下单都是缓存中的结论，存在不可靠性，在消息队列中会查表再次验证
@@ -149,7 +168,7 @@ public class UsersController {
             return "订单生成";
         } catch (Exception e) {
             LOGGER.error("server：下单接口：异步处理订单异常：", e);
-            return "秒杀请求失败，服务器正忙.....";
+            return "下单失败";
         }
     }
     public int getUserId(){

@@ -45,7 +45,7 @@ public class UsersServiceImpl implements UsersService {
     }
 
     @Override
-    @Cacheable(key="'users-one-'+ #p0")
+    @Cacheable(key="'users-one-'+ #p0", unless="#result == null")
     public Users get(int id) {
         return usersMapper.get(id);
     }
@@ -62,14 +62,39 @@ public class UsersServiceImpl implements UsersService {
         return null!=user;
     }
     @Override
-    @Cacheable(key="'users-one-name-'+ #p0")
+    @Cacheable(key="'users-one-name-'+ #p0", unless="#result == null")
     public Users getByName(String name) {
         return usersMapper.findByName(name);
     }
 
     @Override
-    @Cacheable(key="'users-one-name-'+ #p0 +'-password-'+ #p1")
+    @Cacheable(key="'users-one-name-'+ #p0 +'-password-'+ #p1", unless="#result == null")
     public Users getByNameAndPassword(String name, String password){
         return usersMapper.findByNameAndPassword(name, password);
+    }
+
+    @Override
+    public int addUserCount(Integer userId) {
+        String limitKey = "seckill_user_limit_" + userId;//缓存名
+        String limitNum = stringRedisTemplate.opsForValue().get(limitKey);//用户访问频率
+        int limit = -1;
+        if (limitNum == null) {
+            stringRedisTemplate.opsForValue().set(limitKey, "0", 3600, TimeUnit.SECONDS);
+        } else {
+            limit = Integer.parseInt(limitNum) + 1;
+            stringRedisTemplate.opsForValue().set(limitKey, String.valueOf(limit), 3600, TimeUnit.SECONDS);
+        }
+        return limit;
+    }
+
+    @Override
+    public boolean getUserIsBanned(Integer userId) {
+        String limitKey = "seckill_user_limit_" + userId;
+        String limitNum = stringRedisTemplate.opsForValue().get(limitKey);
+        if (limitNum == null) {
+            LOGGER.error("该用户没有访问申请验证值记录，疑似异常");
+            return true;
+        }
+        return Integer.parseInt(limitNum) > ALLOW_COUNT;
     }
 }
